@@ -1,30 +1,59 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  --color-primary: #2979ff; /* Varlet Blue */
+  --color-primary: #f97316;
+}
+
+:root {
+  --color-primary: #f97316;
+  --color-info: #fb923c;
+  --color-link: #f97316;
+  --color-success: #10b981;
+  --bottom-navigation-item-active-color: #f97316;
+  --bottom-navigation-background-color: #ffffff;
+  --bottom-navigation-item-active-background-color: #fff7ed;
+  --ripple-color: transparent;
+  --card-background: #ffffff;
+  --card-shadow-color: transparent;
+  --popup-content-background-color: #ffffff;
+  --dialog-background: #ffffff;
+  --body-background: #fffbf5;
+  --app-bar-color: #fffbf5;
 }
 
 /* 移动端基础设置 */
 body {
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    background-color: #f7f8fa; /* Varlet 推荐的浅灰背景 */
-    color: #333;
-    user-select: none; /* 禁止长按选中 */
-    -webkit-tap-highlight-color: transparent; /* 移除点击高亮 */
+  margin: 0;
+  padding: 0;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #fffbf5;
+  color: #333;
+  user-select: none; /* 禁止长按选中 */
+  -webkit-tap-highlight-color: transparent; /* 移除点击高亮 */
 }
 
 /* 隐藏 Chrome/Safari 的滚动条，但保留滚动功能 */
 ::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 /* 修复 Tailwind 对 Button 的默认重置导致的样式冲突 */
 /* Tailwind Preflight sets background-color: transparent for buttons */
 /* We keep it transparent to allow components to style it, or reset if needed */
 button {
-    background-color: transparent;
-    background-image: none;
+  background-color: transparent;
+  background-image: none;
+}
+
+/* 全局扁平化：移除组件阴影 */
+.var-card,
+.var-popup,
+.var-dialog,
+.var-app-bar,
+.var-bottom-navigation,
+.var-cell,
+.var-button {
+  box-shadow: none !important;
 }

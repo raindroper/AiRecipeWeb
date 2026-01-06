@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '../layout/AppLayout.vue'
 import Home from '../views/home/Home.vue'
-import CreateRecipeView from '../views/CreateRecipeView.vue'
-import UserProfileView from '../views/UserProfileView.vue'
+import Profile from '../views/profile/Profile.vue'
+import Favorites from '../views/favorites/Favorites.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -17,14 +17,14 @@ const router = createRouter({
           component: Home,
         },
         {
-          path: 'publish',
-          name: 'publish',
-          component: CreateRecipeView,
+          path: 'favorites',
+          name: 'favorites',
+          component: Favorites,
         },
         {
           path: 'profile',
           name: 'profile',
-          component: UserProfileView,
+          component: Profile,
         },
       ],
     },

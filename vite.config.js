@@ -2,7 +2,6 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
 import components from 'unplugin-vue-components/vite'
 import autoImport from 'unplugin-auto-import/vite'
 import { VarletUIResolver } from 'unplugin-vue-components/resolvers'
@@ -11,17 +10,16 @@ import { VarletUIResolver } from 'unplugin-vue-components/resolvers'
 export default defineConfig({
   plugins: [
     vue(),
-    vueDevTools(),
     components({
-      resolvers: [VarletUIResolver()]
+      resolvers: [VarletUIResolver({ importStyle: false })],
     }),
     autoImport({
-      resolvers: [VarletUIResolver({ autoImport: true })]
-    })
+      resolvers: [VarletUIResolver({ autoImport: true, importStyle: false })],
+    }),
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
 })

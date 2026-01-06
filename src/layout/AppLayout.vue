@@ -6,11 +6,11 @@ const route = useRoute()
 const router = useRouter()
 const activeTab = ref(0)
 
-// Map tabs to routes
-// 0: Home (/), 1: Publish (/create), 2: Profile (/profile)
+// 标签与路由映射
+// 0: 首页 (/), 1: 收藏 (/favorites), 2: 我的 (/profile)
 const tabs = [
   { path: '/', index: 0 },
-  { path: '/publish', index: 1 },
+  { path: '/favorites', index: 1 },
   { path: '/profile', index: 2 },
 ]
 
@@ -49,11 +49,18 @@ watch(
       </RouterView>
     </div>
 
-    <!-- Bottom Navigation -->
-    <var-bottom-navigation v-model:active="activeTab" fixed safe-area @change="handleChange">
-      <var-bottom-navigation-item label="Home" icon="home" />
-      <var-bottom-navigation-item label="Publish" icon="plus-box" />
-      <var-bottom-navigation-item label="Profile" icon="account-circle" />
+    <!-- 底部导航 -->
+    <var-bottom-navigation
+      v-model:active="activeTab"
+      fixed
+      safe-area
+      active-color="#f97316"
+      class=""
+      @change="handleChange"
+    >
+      <var-bottom-navigation-item label="首页" icon="home" />
+      <var-bottom-navigation-item label="收藏" icon="heart" />
+      <var-bottom-navigation-item label="我的" icon="account-circle" />
     </var-bottom-navigation>
   </div>
 </template>
