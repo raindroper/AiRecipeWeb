@@ -125,21 +125,34 @@
           </div>
         </div>
 
-        <div
-          v-for="msg in messages"
-          :key="msg.id"
-          class="flex w-full"
-          :class="msg.type === 'user' ? 'justify-end' : 'justify-start'"
-        >
-          <div
-            class="p-3 rounded-2xl text-sm max-w-[85%]"
-            :class="
-              msg.type === 'user'
-                ? 'bg-orange-500 text-white rounded-tr-none'
-                : 'bg-white text-amber-900 rounded-tl-none border border-amber-100'
-            "
-          >
-            {{ msg.content }}
+        <div v-for="msg in messages" :key="msg.id" class="w-full space-y-2">
+          <div class="flex w-full" :class="msg.type === 'user' ? 'justify-end' : 'justify-start'">
+            <div
+              class="p-3 rounded-2xl text-sm max-w-[85%]"
+              :class="
+                msg.type === 'user'
+                  ? 'bg-orange-500 text-white rounded-tr-none'
+                  : 'bg-white text-amber-900 rounded-tl-none border border-amber-100'
+              "
+            >
+              {{ msg.content }}
+            </div>
+          </div>
+          <div v-if="msg.recipe" class="flex w-full justify-start">
+            <var-card :elevation="0" class="rounded-2xl border border-amber-100 w-[92%] bg-white">
+              <div class="px-4 py-3">
+                <div class="font-bold text-orange-900">{{ msg.recipe.title || '推荐菜谱' }}</div>
+                <div class="mt-1 text-xs text-amber-700 flex items-center gap-3">
+                  <span v-if="msg.recipe.calories">约 {{ msg.recipe.calories }} 千卡</span>
+                  <span v-if="msg.recipe.time" class="inline-flex items-center gap-1"
+                    ><var-icon name="clock-outline" size="14" /> {{ msg.recipe.time }} 分钟</span
+                  >
+                </div>
+                <div v-if="msg.recipe.summary" class="mt-2 text-sm text-amber-900/90">
+                  {{ msg.recipe.summary }}
+                </div>
+              </div>
+            </var-card>
           </div>
         </div>
       </div>
@@ -154,7 +167,7 @@
             placeholder="输入消息..."
             auto-focus
           />
-          <var-button round type="primary" :disabled="!inputText" @click="sendMessage">
+          <var-button round type="primary" :disabled="loading || !inputText" @click="sendMessage">
             <var-icon name="send" />
           </var-button>
         </div>
@@ -164,9 +177,10 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { cloudService } from '@/utils/cloud'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -174,6 +188,7 @@ const showChat = ref(false)
 const inputText = ref('')
 const messages = ref([])
 const chatContainer = ref(null)
+const loading = ref(false)
 
 const today = computed(() => new Date().toLocaleDateString('zh-CN'))
 
@@ -232,23 +247,52 @@ const toneClass = (idx) => {
   return tones[idx % tones.length]
 }
 
-const sendMessage = async () => {
-  if (!inputText.value.trim()) return
-  messages.value.push({ id: Date.now(), type: 'user', content: inputText.value })
-  const userText = inputText.value
-  inputText.value = ''
+const scrollToBottom = async () => {
   await nextTick()
   if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight
-  setTimeout(async () => {
-    messages.value.push({
+}
+
+const sendMessage = async () => {
+  if (!inputText.value.trim() || loading.value) return
+  const userText = inputText.value
+  messages.value.push({ id: Date.now(), type: 'user', content: userText })
+  loading.value = true
+  inputText.value = ''
+  await scrollToBottom()
+  try {
+    const res = await cloudService.callFunction('generate-recipe-$latest', { message: userText })
+    let data = res
+    if (typeof res === 'string') {
+      try {
+        data = JSON.parse(res)
+      } catch {
+        data = { type: 'chat', text: res }
+      }
+    } else if (res && typeof res === 'object' && 'data' in res) {
+      data = res.data
+    }
+    const aiMsg = {
       id: Date.now() + 1,
       type: 'ai',
-      content: `收到！关于“${userText}”，我可以为你推荐一份更暖胃、更健康的做法，要来看看吗？`,
-    })
-    await nextTick()
-    if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight
-  }, 1000)
+      content: data?.text || '好的，我来为你生成建议。',
+    }
+    if (data && data.type === 'recipe' && data.recipeData) {
+      aiMsg.recipe = data.recipeData
+    }
+    messages.value.push(aiMsg)
+  } catch (e) {
+    messages.value.push({ id: Date.now() + 2, type: 'ai', content: '网络开小差了，请稍后再试。' })
+  } finally {
+    loading.value = false
+    await scrollToBottom()
+  }
 }
+
+onMounted(async () => {
+  try {
+    await cloudService.loginAnonymously()
+  } catch {}
+})
 </script>
 
 <style scoped>
