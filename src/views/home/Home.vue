@@ -139,17 +139,77 @@
             </div>
           </div>
           <div v-if="msg.recipe" class="flex w-full justify-start">
-            <var-card :elevation="0" class="rounded-2xl border border-amber-100 w-[92%] bg-white">
-              <div class="px-4 py-3">
-                <div class="font-bold text-orange-900">{{ msg.recipe.title || '推荐菜谱' }}</div>
-                <div class="mt-1 text-xs text-amber-700 flex items-center gap-3">
-                  <span v-if="msg.recipe.calories">约 {{ msg.recipe.calories }} 千卡</span>
-                  <span v-if="msg.recipe.time" class="inline-flex items-center gap-1"
-                    ><var-icon name="clock-outline" size="14" /> {{ msg.recipe.time }} 分钟</span
+            <var-card
+              :elevation="2"
+              class="recipe-card rounded-xl border border-amber-100 w-[92%] bg-white"
+            >
+              <div class="px-4 py-3 space-y-3">
+                <div>
+                  <div class="text-lg font-bold text-gray-800">
+                    {{ msg.recipe.title || '推荐菜谱' }}
+                  </div>
+                  <div
+                    class="mt-2 flex flex-wrap gap-2"
+                    v-if="msg.recipe.tags && msg.recipe.tags.length"
                   >
+                    <var-chip
+                      v-for="tag in msg.recipe.tags"
+                      :key="tag"
+                      size="mini"
+                      type="warning"
+                      plain
+                    >
+                      {{ tag }}
+                    </var-chip>
+                  </div>
                 </div>
-                <div v-if="msg.recipe.summary" class="mt-2 text-sm text-amber-900/90">
-                  {{ msg.recipe.summary }}
+                <div
+                  class="bg-orange-50 rounded px-3 py-2 text-orange-600 text-xs flex items-center justify-between"
+                >
+                  <div class="inline-flex items-center gap-1">
+                    <var-icon name="clock-outline" size="14" />
+                    <span>烹饪时长：{{ msg.recipe.time }}</span>
+                  </div>
+                  <div class="inline-flex items-center gap-1">
+                    <span>🔥</span>
+                    <span>热量：{{ msg.recipe.calories }} kcal</span>
+                  </div>
+                </div>
+                <div class="space-y-2">
+                  <div class="text-sm font-bold text-amber-900">🥦 所需食材</div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div
+                      v-for="(ing, i) in msg.recipe.ingredients || []"
+                      :key="i"
+                      class="bg-gray-50 p-2 rounded flex items-center justify-between"
+                    >
+                      <span class="text-sm text-amber-900">{{ ing.name }}</span>
+                      <span class="text-xs text-gray-500">{{ ing.amount }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="space-y-2">
+                  <div class="text-sm font-bold text-amber-900">👨‍🍳 烹饪步骤</div>
+                  <div class="space-y-2">
+                    <div
+                      v-for="(step, idx) in msg.recipe.steps || []"
+                      :key="idx"
+                      class="flex items-start gap-2"
+                    >
+                      <div
+                        class="w-5 h-5 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs"
+                      >
+                        {{ idx + 1 }}
+                      </div>
+                      <div class="text-sm text-amber-900 leading-relaxed">{{ step }}</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="pt-2 flex justify-end">
+                  <var-button round text color="transparent" text-color="#A15C00">
+                    <var-icon name="heart-outline" size="18" />
+                    <span class="ml-1 text-sm">收藏</span>
+                  </var-button>
                 </div>
               </div>
             </var-card>
@@ -181,6 +241,9 @@ import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { cloudService } from '@/utils/cloud'
+import { Snackbar } from '@varlet/ui'
+
+const USE_MOCK = true
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -252,35 +315,96 @@ const scrollToBottom = async () => {
   if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight
 }
 
+const mockGenerateRecipe = (message) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (message && message.includes('辣')) {
+        resolve({
+          type: 'recipe',
+          text: '想吃辣的？这道川菜经典绝对满足你！🌶️ (Mock)',
+          recipeData: {
+            title: '正宗麻婆豆腐',
+            calories: 320,
+            time: '20分钟',
+            tags: ['下饭', '川菜', '重口'],
+            ingredients: [
+              { name: '嫩豆腐', amount: '1盒' },
+              { name: '牛肉末', amount: '100g' },
+              { name: '豆瓣酱', amount: '2勺' },
+            ],
+            steps: ['豆腐切块焯水', '炒香肉末和豆瓣酱', '加入豆腐和水焖煮', '勾芡出锅'],
+          },
+        })
+        return
+      }
+      if (message && message.includes('汤')) {
+        resolve({
+          type: 'recipe',
+          text: '天气干燥，来碗清淡的汤吧~ (Mock)',
+          recipeData: {
+            title: '番茄菌菇汤',
+            calories: 150,
+            time: '15分钟',
+            tags: ['低脂', '清淡', '快手'],
+            ingredients: [
+              { name: '番茄', amount: '2个' },
+              { name: '金针菇', amount: '1把' },
+            ],
+            steps: ['番茄炒出汁', '加水烧开', '放入菌菇煮熟'],
+          },
+        })
+        return
+      }
+      resolve({ type: 'chat', text: '我是您的AI厨房助手，请告诉我您想吃什么？(Mock)' })
+    }, 1000)
+  })
+}
+
 const sendMessage = async () => {
   if (!inputText.value.trim() || loading.value) return
+  const isLogin = localStorage.getItem('user_token')
+  if (!isLogin) {
+    Snackbar.warning('请先登录后再使用 AI 厨师功能')
+    router.push('/profile')
+    return
+  }
   const userText = inputText.value
   messages.value.push({ id: Date.now(), type: 'user', content: userText })
   loading.value = true
   inputText.value = ''
   await scrollToBottom()
   try {
-    const res = await cloudService.callFunction('generate-recipe-$latest', { message: userText })
-    let data = res
-    if (typeof res === 'string') {
-      try {
-        data = JSON.parse(res)
-      } catch {
-        data = { type: 'chat', text: res }
+    let data
+    if (USE_MOCK) {
+      console.log('🚧 使用本地 Mock 数据')
+      data = await mockGenerateRecipe(userText)
+    } else {
+      const res = await cloudService.callFunction('generate-recipe', { message: userText })
+      if (typeof res === 'string') {
+        try {
+          data = JSON.parse(res)
+        } catch {
+          data = { type: 'chat', text: res }
+        }
+      } else if (res && typeof res === 'object' && 'data' in res) {
+        data = res.data
+      } else {
+        data = res
       }
-    } else if (res && typeof res === 'object' && 'data' in res) {
-      data = res.data
     }
-    const aiMsg = {
-      id: Date.now() + 1,
-      type: 'ai',
-      content: data?.text || '好的，我来为你生成建议。',
+    if (data) {
+      const aiMsg = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: data?.text || '好的，我来为你生成建议。',
+      }
+      if (data && data.type === 'recipe' && data.recipeData) {
+        aiMsg.recipe = data.recipeData
+      }
+      messages.value.push(aiMsg)
     }
-    if (data && data.type === 'recipe' && data.recipeData) {
-      aiMsg.recipe = data.recipeData
-    }
-    messages.value.push(aiMsg)
   } catch (e) {
+    console.error(e)
     messages.value.push({ id: Date.now() + 2, type: 'ai', content: '网络开小差了，请稍后再试。' })
   } finally {
     loading.value = false
@@ -302,5 +426,8 @@ onMounted(async () => {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+.recipe-card {
+  margin: 0;
 }
 </style>

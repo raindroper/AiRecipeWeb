@@ -1,263 +1,293 @@
 <template>
   <div class="min-h-screen bg-gray-50 pb-[100px]">
-    <div class="bg-gradient-to-br from-orange-400 to-amber-300">
-      <div class="px-5 py-6 flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <var-avatar :src="avatar" size="large" bordered class="border-4 border-white shadow" />
-          <div>
-            <div class="text-white text-xl font-bold">爱做饭的妈妈</div>
-            <div class="text-white/90 text-xs">家庭主厨</div>
-          </div>
-        </div>
-        <var-button round text color="white" text-color="#333">
-          <var-icon name="cog-outline" size="24" />
-        </var-button>
-      </div>
-    </div>
-
-    <div class="px-5 -mt-6">
-      <div class="bg-white rounded-2xl shadow-sm border border-amber-100 p-4">
-        <div class="flex items-center justify-between">
-          <div class="flex-1 text-center">
-            <div class="text-orange-600 text-2xl font-bold">12</div>
-            <div class="text-xs text-gray-500">私房菜谱</div>
-          </div>
-          <div class="flex-1 text-center">
-            <div class="text-orange-600 text-2xl font-bold">45</div>
-            <div class="text-xs text-gray-500">生成记录</div>
-          </div>
-          <div class="flex-1 text-center">
-            <div class="text-orange-600 text-2xl font-bold">5</div>
-            <div class="text-xs text-gray-500">厨房设备</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="px-5 mt-4 space-y-4">
-      <var-card
-        :elevation="0"
-        class="rounded-2xl border border-amber-100 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
-        @click="openFamilyEditModal"
+    <div v-if="!isLoggedIn" class="flex flex-col justify-center items-center h-[80vh] px-6">
+      <div
+        class="w-20 h-20 rounded-full bg-orange-500 flex items-center justify-center text-4xl text-white"
       >
-        <div class="px-4 pt-4 pb-2 flex items-center justify-between">
-          <div class="text-lg font-bold text-orange-900">家庭档案</div>
+        🍳
+      </div>
+      <div class="text-2xl font-bold text-gray-800 mb-8 mt-4">登录暖阳厨房</div>
+      <div class="w-full max-w-md space-y-4">
+        <var-input v-model="phone" placeholder="请输入手机号" />
+        <var-input v-model="password" type="password" placeholder="请输入密码" />
+        <var-button block class="mt-6" type="primary" :color="'#f97316'" @click="handleLogin"
+          >登录</var-button
+        >
+      </div>
+      <div class="mt-6 text-xs text-gray-500">登录即代表同意用户协议</div>
+    </div>
+    <div v-else class="contents">
+      <div class="bg-gradient-to-br from-orange-400 to-amber-300">
+        <div class="px-5 py-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <var-avatar :src="avatar" size="large" bordered class="border-4 border-white shadow" />
+            <div>
+              <div class="text-white text-xl font-bold">爱做饭的妈妈</div>
+              <div class="text-white/90 text-xs">家庭主厨</div>
+            </div>
+          </div>
+          <var-button round text color="white" text-color="#333">
+            <var-icon name="cog-outline" size="24" />
+          </var-button>
         </div>
-        <div class="px-4 pb-4 space-y-3">
+      </div>
+
+      <div class="px-5 -mt-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-amber-100 p-4">
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="text-xl select-none">👨‍👩‍👧</span>
-              <span class="text-orange-900 font-bold text-lg">{{ familySizeText }}</span>
+            <div class="flex-1 text-center">
+              <div class="text-orange-600 text-2xl font-bold">12</div>
+              <div class="text-xs text-gray-500">私房菜谱</div>
             </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xl select-none">🌶️</span>
-              <span class="text-orange-900 font-bold text-lg">{{ tastePref }}</span>
+            <div class="flex-1 text-center">
+              <div class="text-orange-600 text-2xl font-bold">45</div>
+              <div class="text-xs text-gray-500">生成记录</div>
             </div>
-          </div>
-          <div class="space-y-2">
-            <div class="text-xs text-gray-500">🚫 忌口/过敏</div>
-            <div class="flex flex-wrap gap-2">
-              <var-chip
-                v-for="tag in allergies"
-                :key="tag"
-                size="small"
-                plain
-                style="background-color: #fef2f2; color: #ef4444"
-                >{{ tag }}</var-chip
-              >
+            <div class="flex-1 text-center">
+              <div class="text-orange-600 text-2xl font-bold">5</div>
+              <div class="text-xs text-gray-500">厨房设备</div>
             </div>
           </div>
         </div>
-      </var-card>
+      </div>
 
-      <var-card
-        :elevation="0"
-        class="rounded-2xl border border-amber-100 overflow-hidden cursor-pointer"
-        @click="openAssetsModal"
-      >
-        <div class="px-4 pt-4 pb-2 flex items-center justify-between">
-          <div class="text-lg font-bold text-orange-900">厨房设备 · 食材</div>
-        </div>
-        <div class="px-4 pb-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div class="surface-elev-1 rounded-xl p-3">
-              <div class="text-xs text-gray-500 mb-2">设备</div>
-              <div class="grid grid-cols-2 gap-3">
-                <div
-                  v-for="item in equipmentPreview"
-                  :key="item.name"
-                  class="flex flex-col items-center gap-1"
-                >
-                  <div
-                    class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-xl"
-                  >
-                    {{ item.icon }}
-                  </div>
-                  <div class="text-xs text-gray-700">{{ item.name }}</div>
-                </div>
-                <div v-if="equipmentOverflow > 0" class="flex items-center justify-center">
-                  <span class="pill-outline" title="查看更多">+{{ equipmentOverflow }}</span>
-                </div>
+      <div class="px-5 mt-4 space-y-4">
+        <var-card
+          :elevation="0"
+          class="rounded-2xl border border-amber-100 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
+          @click="openFamilyEditModal"
+        >
+          <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+            <div class="text-lg font-bold text-orange-900">家庭档案</div>
+          </div>
+          <div class="px-4 pb-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xl select-none">👨‍👩‍👧</span>
+                <span class="text-orange-900 font-bold text-lg">{{ familySizeText }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xl select-none">🌶️</span>
+                <span class="text-orange-900 font-bold text-lg">{{ tastePref }}</span>
               </div>
             </div>
-            <div class="surface-elev-1 rounded-xl p-3">
-              <div class="text-xs text-gray-500 mb-2">已有食材</div>
+            <div class="space-y-2">
+              <div class="text-xs text-gray-500">🚫 忌口/过敏</div>
               <div class="flex flex-wrap gap-2">
-                <span v-for="ing in ingredientsPreview" :key="ing.name" class="pill">{{
-                  ing.name
-                }}</span>
-                <span v-if="ingredientsOverflow > 0" class="pill-outline" title="查看更多"
-                  >+{{ ingredientsOverflow }}</span
+                <var-chip
+                  v-for="tag in allergies"
+                  :key="tag"
+                  size="small"
+                  plain
+                  style="background-color: #fef2f2; color: #ef4444"
+                  >{{ tag }}</var-chip
                 >
               </div>
             </div>
           </div>
-        </div>
-      </var-card>
+        </var-card>
 
-      <var-popup
-        v-model:show="familyEditModal"
-        position="bottom"
-        class="rounded-t-3xl h-[70vh] flex flex-col"
-        :overlay-style="{ backgroundColor: 'rgba(0,0,0,0.25)' }"
-      >
-        <div class="flex-none px-4 pt-4 pb-3 border-b border-amber-100">
-          <div class="text-orange-900 font-bold">编辑家庭档案</div>
-        </div>
-        <div class="flex-1 overflow-y-auto p-4 space-y-4">
-          <div class="surface-elev-1 rounded-xl p-3">
-            <div class="text-xs text-gray-500 mb-2">人数</div>
-            <input type="number" min="1" class="search-input" v-model.number="familySize" />
+        <var-card
+          :elevation="0"
+          class="rounded-2xl border border-amber-100 overflow-hidden cursor-pointer"
+          @click="openAssetsModal"
+        >
+          <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+            <div class="text-lg font-bold text-orange-900">厨房设备 · 食材</div>
           </div>
-          <div class="surface-elev-1 rounded-xl p-3">
-            <div class="text-xs text-gray-500 mb-2">口味偏好</div>
-            <input
-              type="text"
-              class="search-input"
-              v-model="tastePref"
-              placeholder="如：清淡, 少油"
-            />
-          </div>
-          <div class="surface-elev-1 rounded-xl p-3">
-            <div class="text-xs text-gray-500 mb-2">忌口/过敏</div>
-            <div class="flex flex-wrap gap-2">
-              <span
-                v-for="tag in allAllergyOptions"
-                :key="tag"
-                class="pill"
-                :class="{ selected: allergies.includes(tag) }"
-                @click="toggleAllergy(tag)"
-                >{{ tag }}</span
-              >
+          <div class="px-4 pb-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="surface-elev-1 rounded-xl p-3">
+                <div class="text-xs text-gray-500 mb-2">设备</div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div
+                    v-for="item in equipmentPreview"
+                    :key="item.name"
+                    class="flex flex-col items-center gap-1"
+                  >
+                    <div
+                      class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-xl"
+                    >
+                      {{ item.icon }}
+                    </div>
+                    <div class="text-xs text-gray-700">{{ item.name }}</div>
+                  </div>
+                  <div v-if="equipmentOverflow > 0" class="flex items-center justify-center">
+                    <span class="pill-outline" title="查看更多">+{{ equipmentOverflow }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="surface-elev-1 rounded-xl p-3">
+                <div class="text-xs text-gray-500 mb-2">已有食材</div>
+                <div class="flex flex-wrap gap-2">
+                  <span v-for="ing in ingredientsPreview" :key="ing.name" class="pill">{{
+                    ing.name
+                  }}</span>
+                  <span v-if="ingredientsOverflow > 0" class="pill-outline" title="查看更多"
+                    >+{{ ingredientsOverflow }}</span
+                  >
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="flex-none p-4 border-t border-amber-100 flex gap-2">
-          <button class="pill-outline" @click="closeFamilyEditModal">关闭</button>
-          <button class="pill-outline" @click="saveFamilyEdit">保存</button>
-        </div>
-      </var-popup>
+        </var-card>
 
-      <var-popup
-        v-model:show="assetsModal"
-        position="bottom"
-        class="rounded-t-3xl h-[86vh] flex flex-col"
-        :overlay-style="{ backgroundColor: 'rgba(0,0,0,0.25)' }"
-      >
-        <div class="flex-none px-4 pt-4 pb-3 border-b border-amber-100">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <button
-                class="tab-btn"
-                :class="{ active: activeTab === 'equipment' }"
-                @click="activeTab = 'equipment'"
-              >
-                设备
-              </button>
-              <button
-                class="tab-btn"
-                :class="{ active: activeTab === 'ingredients' }"
-                @click="activeTab = 'ingredients'"
-              >
-                食材
-              </button>
+        <var-popup
+          v-model:show="familyEditModal"
+          position="bottom"
+          class="rounded-t-3xl h-[70vh] flex flex-col"
+          :overlay-style="{ backgroundColor: 'rgba(0,0,0,0.25)' }"
+        >
+          <div class="flex-none px-4 pt-4 pb-3 border-b border-amber-100">
+            <div class="text-orange-900 font-bold">编辑家庭档案</div>
+          </div>
+          <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="surface-elev-1 rounded-xl p-3">
+              <div class="text-xs text-gray-500 mb-2">人数</div>
+              <input type="number" min="1" class="search-input" v-model.number="familySize" />
             </div>
-            <div class="flex items-center gap-2">
-              <button class="pill-outline" @click="editMode = !editMode">
-                {{ editMode ? '完成' : '编辑' }}
-              </button>
-              <button class="pill-outline" @click="closeAssetsModal">关闭</button>
+            <div class="surface-elev-1 rounded-xl p-3">
+              <div class="text-xs text-gray-500 mb-2">口味偏好</div>
+              <input
+                type="text"
+                class="search-input"
+                v-model="tastePref"
+                placeholder="如：清淡, 少油"
+              />
+            </div>
+            <div class="surface-elev-1 rounded-xl p-3">
+              <div class="text-xs text-gray-500 mb-2">忌口/过敏</div>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="tag in allAllergyOptions"
+                  :key="tag"
+                  class="pill"
+                  :class="{ selected: allergies.includes(tag) }"
+                  @click="toggleAllergy(tag)"
+                  >{{ tag }}</span
+                >
+              </div>
             </div>
           </div>
-          <div class="mt-3 flex items-center gap-2">
-            <input v-model="searchQuery" type="text" class="search-input" placeholder="搜索..." />
-            <div class="flex gap-2 overflow-x-auto no-scrollbar">
-              <button
-                v-for="f in filters"
-                :key="f"
-                class="pill-outline"
-                :class="{ 'active-filter': activeFilter === f }"
-                @click="activeFilter = activeFilter === f ? '' : f"
-              >
-                {{ f }}
-              </button>
-            </div>
+          <div class="flex-none p-4 border-t border-amber-100 flex gap-2">
+            <button class="pill-outline" @click="closeFamilyEditModal">关闭</button>
+            <button class="pill-outline" @click="saveFamilyEdit">保存</button>
           </div>
-        </div>
+        </var-popup>
 
-        <div class="flex-1 overflow-y-auto p-4">
-          <div
-            v-if="activeTab === 'equipment'"
-            class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3"
-          >
+        <var-popup
+          v-model:show="assetsModal"
+          position="bottom"
+          class="rounded-t-3xl h-[86vh] flex flex-col"
+          :overlay-style="{ backgroundColor: 'rgba(0,0,0,0.25)' }"
+        >
+          <div class="flex-none px-4 pt-4 pb-3 border-b border-amber-100">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <button
+                  class="tab-btn"
+                  :class="{ active: activeTab === 'equipment' }"
+                  @click="activeTab = 'equipment'"
+                >
+                  设备
+                </button>
+                <button
+                  class="tab-btn"
+                  :class="{ active: activeTab === 'ingredients' }"
+                  @click="activeTab = 'ingredients'"
+                >
+                  食材
+                </button>
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="pill-outline" @click="editMode = !editMode">
+                  {{ editMode ? '完成' : '编辑' }}
+                </button>
+                <button class="pill-outline" @click="closeAssetsModal">关闭</button>
+              </div>
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+              <input v-model="searchQuery" type="text" class="search-input" placeholder="搜索..." />
+              <div class="flex gap-2 overflow-x-auto no-scrollbar">
+                <button
+                  v-for="f in filters"
+                  :key="f"
+                  class="pill-outline"
+                  :class="{ 'active-filter': activeFilter === f }"
+                  @click="activeFilter = activeFilter === f ? '' : f"
+                >
+                  {{ f }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-4">
             <div
-              v-for="item in visibleEquipment"
-              :key="item.name"
-              class="grid-item"
-              :class="{ selected: editMode && selectedMap[item.name] }"
-              @click="toggleSelect(item.name)"
+              v-if="activeTab === 'equipment'"
+              class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3"
             >
               <div
-                class="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center text-2xl"
+                v-for="item in visibleEquipment"
+                :key="item.name"
+                class="grid-item"
+                :class="{ selected: editMode && selectedMap[item.name] }"
+                @click="toggleSelect(item.name)"
               >
-                {{ item.icon }}
+                <div
+                  class="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center text-2xl"
+                >
+                  {{ item.icon }}
+                </div>
+                <div class="text-xs text-gray-700 mt-1">{{ item.name }}</div>
               </div>
-              <div class="text-xs text-gray-700 mt-1">{{ item.name }}</div>
+            </div>
+            <div v-else class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+              <div
+                v-for="ing in visibleIngredients"
+                :key="ing.name"
+                class="pill large"
+                :class="{ selected: editMode && selectedMap[ing.name] }"
+                @click="toggleSelect(ing.name)"
+              >
+                {{ ing.name }}
+              </div>
             </div>
           </div>
-          <div v-else class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-            <div
-              v-for="ing in visibleIngredients"
-              :key="ing.name"
-              class="pill large"
-              :class="{ selected: editMode && selectedMap[ing.name] }"
-              @click="toggleSelect(ing.name)"
-            >
-              {{ ing.name }}
-            </div>
-          </div>
-        </div>
-      </var-popup>
+        </var-popup>
 
-      <var-card :elevation="0" class="rounded-2xl border border-amber-100 overflow-hidden">
-        <div>
-          <var-cell title="帮助与反馈" icon="message-text" clickable border />
-          <var-cell title="关于应用" icon="information" clickable border />
-          <var-cell title="退出登录" icon="logout" clickable :border="false" />
-        </div>
-      </var-card>
+        <var-card :elevation="0" class="rounded-2xl border border-amber-100 overflow-hidden">
+          <div>
+            <var-cell title="帮助与反馈" icon="message-text" clickable border />
+            <var-cell title="关于应用" icon="information" clickable border />
+            <var-cell
+              title="退出登录"
+              icon="logout"
+              clickable
+              :border="false"
+              @click="handleLogout"
+            />
+          </div>
+        </var-card>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { cloudService } from '@/utils/cloud'
+import { Snackbar } from '@varlet/ui'
 
 const store = useUserStore()
 const avatar = computed(
   () => store?.currentUser?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Chef',
 )
+
+const isLoggedIn = ref(false)
+const phone = ref('')
+const password = ref('')
 
 const moreAllergies = []
 const familyEditModal = ref(false)
@@ -367,6 +397,29 @@ const toggleAllergy = (tag) => {
 const saveFamilyEdit = () => {
   familyEditModal.value = false
 }
+
+const handleLogin = async () => {
+  try {
+    const user = await cloudService.loginByPhone(phone.value, password.value)
+    localStorage.setItem('user_token', user.id || 'user_token')
+    localStorage.setItem('user_profile', JSON.stringify(user))
+    isLoggedIn.value = true
+    Snackbar.success('欢迎回来')
+  } catch (e) {
+    const msg = typeof e?.message === 'string' ? e.message : '登录失败'
+    Snackbar.error(msg)
+  }
+}
+
+const handleLogout = () => {
+  localStorage.removeItem('user_token')
+  isLoggedIn.value = false
+}
+
+onMounted(() => {
+  const token = localStorage.getItem('user_token')
+  isLoggedIn.value = !!token
+})
 </script>
 
 <style scoped>

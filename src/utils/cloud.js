@@ -2,10 +2,14 @@ import agconnect from '@agconnect/api'
 import '@agconnect/auth'
 import '@agconnect/function'
 import { agConnectConfig } from '../agconnect-config'
+import { AgcObjectTypeInfo } from '@/utils/agconnect-data-context'
+import { UserProfile } from '@/models/UserProfile'
 
 class CloudService {
   constructor() {
     this.initialized = false
+    this.dbInitialized = false
+    this.dbZone = null
   }
 
   // 初始化 SDK
@@ -67,6 +71,47 @@ class CloudService {
       return result.getValue()
     } catch (e) {
       console.error(`❌ Call Function Error (${name}):`, e)
+      throw e
+    }
+  }
+
+  async initDatabase() {
+    this.init()
+    if (this.dbInitialized) return
+    try {
+      const database = agconnect.database && agconnect.database()
+      if (!database) throw new Error('Cloud DB SDK not available')
+      await database.openCloudDBZone({
+        objectTypeInfo: AgcObjectTypeInfo,
+        zoneName: 'QuickStart',
+      })
+      this.dbZone = database.getCloudDBZone && database.getCloudDBZone('QuickStart')
+      if (!this.dbZone) throw new Error('Cloud DB Zone open failed')
+      this.dbInitialized = true
+      console.log('✅ Cloud DB Zone initialized: QuickStart')
+    } catch (e) {
+      console.error('❌ Cloud DB init error:', e)
+      throw e
+    }
+  }
+
+  async loginByPhone(phone, pwd) {
+    try {
+      const res = await this.callFunction('user-login', { phone, password: pwd })
+      let data = res
+      if (typeof res === 'string') {
+        try {
+          data = JSON.parse(res)
+        } catch {
+          data = { code: 500, message: '返回格式错误' }
+        }
+      }
+      if (data && data.code === 0) {
+        return data.data
+      }
+      throw new Error(data?.message || '登录失败')
+    } catch (e) {
+      console.error('❌ Login by phone error:', e)
       throw e
     }
   }
