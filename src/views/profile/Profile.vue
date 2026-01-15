@@ -22,11 +22,11 @@
           <div class="flex items-center gap-4">
             <var-avatar :src="avatar" size="large" bordered class="border-4 border-white shadow" />
             <div>
-              <div class="text-white text-xl font-bold">爱做饭的妈妈</div>
-              <div class="text-white/90 text-xs">家庭主厨</div>
+              <div class="text-white text-xl font-bold">{{ nickname }}</div>
+              <div class="text-white/90 text-xs">{{ userRole }}</div>
             </div>
           </div>
-          <var-button round text color="white" text-color="#333">
+          <var-button round text color="white" text-color="#333" @click="openProfileModal">
             <var-icon name="cog-outline" size="24" />
           </var-button>
         </div>
@@ -44,7 +44,7 @@
               <div class="text-xs text-gray-500">生成记录</div>
             </div>
             <div class="flex-1 text-center">
-              <div class="text-orange-600 text-2xl font-bold">5</div>
+              <div class="text-orange-600 text-2xl font-bold">{{ equipmentCount }}</div>
               <div class="text-xs text-gray-500">厨房设备</div>
             </div>
           </div>
@@ -68,7 +68,7 @@
               </div>
               <div class="flex items-center gap-2">
                 <span class="text-xl select-none">🌶️</span>
-                <span class="text-orange-900 font-bold text-lg">{{ tastePref }}</span>
+                <span class="text-orange-900 font-bold text-lg">{{ tastePref || '未设置' }}</span>
               </div>
             </div>
             <div class="space-y-2">
@@ -82,6 +82,7 @@
                   style="background-color: #fef2f2; color: #ef4444"
                   >{{ tag }}</var-chip
                 >
+                <span v-if="allergies.length === 0" class="text-xs text-gray-400">无</span>
               </div>
             </div>
           </div>
@@ -132,6 +133,32 @@
           </div>
         </var-card>
 
+        <!-- Profile Edit Modal -->
+        <var-popup
+          v-model:show="profileEditModal"
+          position="bottom"
+          class="rounded-t-3xl h-[50vh] flex flex-col"
+          :overlay-style="{ backgroundColor: 'rgba(0,0,0,0.25)' }"
+        >
+          <div class="flex-none px-4 pt-4 pb-3 border-b border-amber-100">
+            <div class="text-orange-900 font-bold">编辑个人信息</div>
+          </div>
+          <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="surface-elev-1 rounded-xl p-3">
+              <div class="text-xs text-gray-500 mb-2">昵称</div>
+              <input type="text" class="search-input w-full" v-model="editNickname" />
+            </div>
+            <div class="surface-elev-1 rounded-xl p-3">
+              <div class="text-xs text-gray-500 mb-2">头像链接</div>
+              <input type="text" class="search-input w-full" v-model="editAvatar" />
+            </div>
+          </div>
+          <div class="flex-none p-4 border-t border-amber-100 flex gap-2">
+            <button class="pill-outline flex-1" @click="profileEditModal = false">取消</button>
+            <button class="pill-outline flex-1 bg-orange-100" @click="saveBasicInfo">保存</button>
+          </div>
+        </var-popup>
+
         <var-popup
           v-model:show="familyEditModal"
           position="bottom"
@@ -171,7 +198,7 @@
           </div>
           <div class="flex-none p-4 border-t border-amber-100 flex gap-2">
             <button class="pill-outline" @click="closeFamilyEditModal">关闭</button>
-            <button class="pill-outline" @click="saveFamilyEdit">保存</button>
+            <button class="pill-outline bg-orange-100" @click="saveFamilyEdit">保存</button>
           </div>
         </var-popup>
 
@@ -200,7 +227,7 @@
                 </button>
               </div>
               <div class="flex items-center gap-2">
-                <button class="pill-outline" @click="editMode = !editMode">
+                <button class="pill-outline" @click="toggleEditMode">
                   {{ editMode ? '完成' : '编辑' }}
                 </button>
                 <button class="pill-outline" @click="closeAssetsModal">关闭</button>
@@ -284,10 +311,17 @@ const store = useUserStore()
 const avatar = computed(
   () => store?.currentUser?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Chef',
 )
+const nickname = computed(() => store?.currentUser?.nickname || '爱做饭的妈妈')
+const userRole = computed(() => (store?.currentUser?.isPro ? 'Pro 会员' : '家庭主厨'))
 
 const isLoggedIn = ref(false)
 const phone = ref('')
 const password = ref('')
+
+// Profile Edit
+const profileEditModal = ref(false)
+const editNickname = ref('')
+const editAvatar = ref('')
 
 const moreAllergies = []
 const familyEditModal = ref(false)
@@ -346,12 +380,27 @@ const ingredientsAll = [
 
 const equipmentPreviewLimit = 5
 const ingredientsPreviewLimit = 9
-const equipmentPreview = computed(() => equipmentAll.slice(0, equipmentPreviewLimit))
-const ingredientsPreview = computed(() => ingredientsAll.slice(0, ingredientsPreviewLimit))
-const equipmentOverflow = computed(() => Math.max(0, equipmentAll.length - equipmentPreviewLimit))
-const ingredientsOverflow = computed(() =>
-  Math.max(0, ingredientsAll.length - ingredientsPreviewLimit),
-)
+const equipmentPreview = computed(() => {
+  // Show selected first, then others
+  const selected = equipmentAll.filter((e) => selectedMap[e.name])
+  // If we have selected items, show them in preview
+  if (selected.length > 0) return selected.slice(0, equipmentPreviewLimit)
+  return equipmentAll.slice(0, equipmentPreviewLimit)
+})
+const ingredientsPreview = computed(() => {
+  const selected = ingredientsAll.filter((i) => selectedMap[i.name])
+  if (selected.length > 0) return selected.slice(0, ingredientsPreviewLimit)
+  return ingredientsAll.slice(0, ingredientsPreviewLimit)
+})
+const equipmentOverflow = computed(() => {
+  const count = Object.values(selectedMap).filter((v) => v).length || equipmentAll.length
+  return Math.max(0, count - equipmentPreviewLimit)
+})
+const ingredientsOverflow = computed(() => {
+  const count = Object.values(selectedMap).filter((v) => v).length || ingredientsAll.length
+  return Math.max(0, count - ingredientsPreviewLimit)
+})
+const equipmentCount = computed(() => Object.values(selectedMap).filter((v) => v).length)
 
 const visibleEquipment = computed(() => {
   const base = equipmentAll.filter(
@@ -373,14 +422,93 @@ const visibleIngredients = computed(() => {
   return base
 })
 
+// Data Loading & Saving
+const loadData = async () => {
+  if (!store.currentUser?.id) return
+  try {
+    const res = await cloudService.callFunction('user-center', {
+      action: 'get',
+      userId: store.currentUser.id,
+    })
+    if (res.ret.code === 0) {
+      const user = res.result
+      store.updateProfile(user)
+      // Update local refs
+      if (user.familyContext) {
+        try {
+          const fc = JSON.parse(user.familyContext)
+          familySize.value = fc.size || 3
+          tastePref.value = fc.taste || ''
+          allergies.value = fc.allergies || []
+        } catch (e) {}
+      }
+      if (user.kitchenProfile) {
+        try {
+          const kp = JSON.parse(user.kitchenProfile)
+          for (const key in selectedMap) delete selectedMap[key]
+          kp.equipment?.forEach((e) => (selectedMap[e] = true))
+          kp.ingredients?.forEach((i) => (selectedMap[i] = true))
+        } catch (e) {}
+      }
+      editNickname.value = user.nickname || ''
+      editAvatar.value = user.avatarUrl || ''
+    }
+  } catch (e) {
+    console.error('Load profile error:', e)
+  }
+}
+
+const updateRemote = async (updateData) => {
+  try {
+    const res = await cloudService.callFunction('user-center', {
+      action: 'update',
+      userId: store.currentUser.id,
+      data: updateData,
+    })
+    if (res.ret.code === 0) {
+      store.updateProfile(res.result)
+      Snackbar.success('保存成功')
+    } else {
+      Snackbar.error(res.ret.desc)
+    }
+  } catch (e) {
+    console.error(e)
+    Snackbar.error('保存失败')
+  }
+}
+
+const openProfileModal = () => {
+  editNickname.value = store.currentUser?.nickname || ''
+  editAvatar.value = store.currentUser?.avatarUrl || ''
+  profileEditModal.value = true
+}
+
+const saveBasicInfo = async () => {
+  await updateRemote({ nickname: editNickname.value, avatarUrl: editAvatar.value })
+  profileEditModal.value = false
+}
+
 const openAssetsModal = () => {
   assetsModal.value = true
 }
 const closeAssetsModal = () => {
   assetsModal.value = false
+  editMode.value = false
 }
 const toggleSelect = (key) => {
+  if (!editMode.value) return
   selectedMap[key] = !selectedMap[key]
+}
+
+const toggleEditMode = async () => {
+  if (editMode.value) {
+    // Switching from Edit -> View, save data
+    const equipment = equipmentAll.filter((e) => selectedMap[e.name]).map((e) => e.name)
+    const ingredients = ingredientsAll.filter((i) => selectedMap[i.name]).map((i) => i.name)
+    const data = { equipment, ingredients }
+    await updateRemote({ kitchenProfile: JSON.stringify(data) })
+  }
+  editMode.value = !editMode.value
 }
 
 const openFamilyEditModal = () => {
@@ -394,17 +522,25 @@ const toggleAllergy = (tag) => {
   if (idx >= 0) allergies.value.splice(idx, 1)
   else allergies.value.push(tag)
 }
-const saveFamilyEdit = () => {
+const saveFamilyEdit = async () => {
+  const data = {
+    size: familySize.value,
+    taste: tastePref.value,
+    allergies: allergies.value,
+  }
+  await updateRemote({ familyContext: JSON.stringify(data) })
   familyEditModal.value = false
 }
 
 const handleLogin = async () => {
   try {
     const user = await cloudService.loginByPhone(phone.value, password.value)
-    localStorage.setItem('user_token', user.id || 'user_token')
+    localStorage.setItem('user_token', user.id)
     localStorage.setItem('user_profile', JSON.stringify(user))
+    store.updateProfile(user)
     isLoggedIn.value = true
     Snackbar.success('欢迎回来')
+    loadData()
   } catch (e) {
     const msg = typeof e?.message === 'string' ? e.message : '登录失败'
     Snackbar.error(msg)
@@ -413,12 +549,24 @@ const handleLogin = async () => {
 
 const handleLogout = () => {
   localStorage.removeItem('user_token')
+  localStorage.removeItem('user_profile')
   isLoggedIn.value = false
+  store.updateProfile({}) // Reset store?
 }
 
 onMounted(() => {
   const token = localStorage.getItem('user_token')
-  isLoggedIn.value = !!token
+  const profileStr = localStorage.getItem('user_profile')
+  if (token) {
+    isLoggedIn.value = true
+    if (profileStr) {
+      try {
+        const p = JSON.parse(profileStr)
+        store.updateProfile(p)
+      } catch (e) {}
+    }
+    loadData()
+  }
 })
 </script>
 

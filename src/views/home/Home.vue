@@ -1,5 +1,5 @@
 <template>
-  <div class="home-dashboard min-h-screen pb-[120px] space-y-4">
+  <div class="home-dashboard min-h-screen space-y-4">
     <header class="px-5 pt-8 pb-2 flex justify-between items-center">
       <div>
         <h1 class="text-2xl font-bold text-orange-900">{{ greeting }}</h1>

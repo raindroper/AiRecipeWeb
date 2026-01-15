@@ -39,9 +39,9 @@ watch(
 </script>
 
 <template>
-  <div class="app-layout min-h-screen relative">
+  <div class="app-layout h-screen relative flex flex-col justify-start">
     <!-- Main Content Area with bottom padding to avoid overlap -->
-    <div class="content pb-[50px]">
+    <div class="content shrink grow w-full">
       <RouterView v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" />
@@ -55,7 +55,7 @@ watch(
       fixed
       safe-area
       active-color="#f97316"
-      class=""
+      class="shrink-0 grow-0 w-full"
       @change="handleChange"
     >
       <var-bottom-navigation-item label="首页" icon="home" />
