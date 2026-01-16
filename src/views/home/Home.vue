@@ -243,7 +243,7 @@ import { useUserStore } from '@/stores/user'
 import { cloudService } from '@/utils/cloud'
 import { Snackbar } from '@varlet/ui'
 
-const USE_MOCK = true
+const USE_MOCK = false
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -379,15 +379,25 @@ const sendMessage = async () => {
       console.log('🚧 使用本地 Mock 数据')
       data = await mockGenerateRecipe(userText)
     } else {
-      const res = await cloudService.callFunction('generate-recipe', { message: userText })
+      const res = await cloudService.callFunction('generate-recipe', {
+        message: userText,
+        userId: userStore.currentUser?.id,
+      })
       if (typeof res === 'string') {
         try {
           data = JSON.parse(res)
         } catch {
           data = { type: 'chat', text: res }
         }
-      } else if (res && typeof res === 'object' && 'data' in res) {
-        data = res.data
+      } else if (res && typeof res === 'object') {
+        // 适配 { ret: {...}, result: {...} } 结构
+        if ('result' in res) {
+          data = res.result
+        } else if ('data' in res) {
+          data = res.data
+        } else {
+          data = res
+        }
       } else {
         data = res
       }
