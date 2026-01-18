@@ -8,7 +8,8 @@ import { agConnectConfig } from '../agconnect-config'
 // 1. 本地调试开关
 // true: 请求 DevEco Studio 本地启动的云函数 (http://127.0.0.1:3000/...)
 // false: 请求华为云端部署的正式云函数
-const USE_LOCAL_DEBUG = true
+// 使用 import.meta.env.DEV 自动判断：开发环境为 true，生产环境(Build后)为 false
+const USE_LOCAL_DEBUG = import.meta.env.DEV
 
 // 2. 本地云函数地址
 // 请根据 DevEco Studio 控制台 "Run" 窗口输出的端口修改
