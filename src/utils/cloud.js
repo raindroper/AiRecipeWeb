@@ -55,7 +55,7 @@ class CloudService {
       // 没有登录则执行匿名登录
       const user = await agconnect.auth().signInAnonymously()
       console.log('👤 Anonymous Login Success:', user.getUser().getUid())
-      return user
+      return user.getUser()
     } catch (e) {
       console.error('❌ Login Error:', e)
       throw e

@@ -95,6 +95,7 @@ export const useRecipeStore = defineStore('recipe', {
         views: 0,
       })
       this.recipes.unshift(newRecipe)
+      return newRecipe
     },
     getRecipeById(id) {
       return this.recipes.find((r) => r.id === id)
