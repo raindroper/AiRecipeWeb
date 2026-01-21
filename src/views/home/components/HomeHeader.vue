@@ -6,7 +6,12 @@
     <div
       class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden shadow-sm border border-white/50"
     >
-      <img v-if="avatarUrl" :src="avatarUrl" alt="Avatar" class="w-full h-full object-cover" />
+      <img
+        v-if="avatarUrl"
+        :src="avatarUrl"
+        alt="Avatar"
+        class="w-full h-full object-cover"
+      />
     </div>
   </header>
 </template>

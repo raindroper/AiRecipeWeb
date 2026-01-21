@@ -127,14 +127,14 @@
 
           <div class="bg-gray-50 rounded-xl p-4 flex flex-col gap-3">
             <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2 text-sm text-gray-600">
+              <div class="flex grow-0 shrink-0 items-center gap-2 text-sm text-gray-600">
                 <span class="text-lg">👨‍👩‍👧</span>
                 <span>{{ familySizeText }}</span>
               </div>
-              <div class="h-4 w-[1px] bg-gray-300"></div>
+              <div class="h-4 w-[1px] bg-gray-300 mx-4"></div>
               <div class="flex items-center gap-2 text-sm text-gray-600">
                 <span class="text-lg">🌶️</span>
-                <span>{{ tastePref || '口味未设置' }}</span>
+                <span class="line-clamp-2">{{ tastePref || '口味未设置' }}</span>
               </div>
             </div>
             <div

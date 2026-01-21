@@ -70,7 +70,9 @@
         @click="router.push('/profile')"
       >
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-xl">
+          <div
+            class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-xl"
+          >
             🧊
           </div>
           <div class="text-sm text-gray-700">
@@ -108,7 +110,13 @@
             <div class="text-xs text-gray-400 mt-1">高蛋白 · 15分钟 · 家常菜</div>
           </div>
           <div class="flex items-center px-2">
-            <var-button round icon-container color="#fff7ed" text-color="#f97316" class="!w-8 !h-8">
+            <var-button
+              round
+              icon-container
+              color="#fff7ed"
+              text-color="#f97316"
+              class="!w-8 !h-8"
+            >
               <var-icon name="plus" size="16" />
             </var-button>
           </div>

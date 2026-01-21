@@ -64,48 +64,75 @@ class CloudService {
 
   /**
    * 通用云函数调用方法
-   * 根据 USE_LOCAL_DEBUG 自动切换本地 HTTP 请求或云端 SDK 调用
-   * @param {string} name 云函数名称 (如 'user-login')
-   * @param {object} params 传递给云函数的参数
+   * 自动根据环境切换本地/云端调用
    */
   async callFunction(name, params = {}) {
-    // -------------------------------------------------
-    // 分支 A: 本地调试模式 (DevEco Studio Local Run)
-    // -------------------------------------------------
     if (USE_LOCAL_DEBUG) {
-      console.log(`🔧 [Local Debug] Calling function: ${name}`, params)
+      return this._callLocal(name, params)
+    }
+    return this._callCloud(name, params)
+  }
+
+  /**
+   * 私有方法：本地调试调用
+   */
+  async _callLocal(name, params) {
+    console.log(`🔧 [Local Debug] Calling function: ${name}`, params)
+    try {
+      // 拼接本地地址
+      const url = `${LOCAL_BASE_URL}/${name}/invoke`
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // 将参数序列化为 JSON 字符串，模拟 event.body
+        body: JSON.stringify(params),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Local function error: ${response.status} ${response.statusText}`)
+      }
+
+      const result = await response.json()
+      console.log(`📥 [Local Debug Object] Result Raw:`, result)
+
+      return this._unwrapLocalResponse(result)
+    } catch (e) {
+      console.error(`❌ [Local Debug] Error:`, e)
+      throw e
+    }
+  }
+
+  /**
+   * 私有方法：解析本地调试器返回的响应
+   * 本地调试器返回格式通常为: { body: "JSONString", headers: ..., statusCode: 200 }
+   */
+  _unwrapLocalResponse(result) {
+    if (result && typeof result === 'object' && 'body' in result) {
       try {
-        // 拼接本地地址，通常格式为: http://IP:PORT/函数名
-        // 注意：DevEco 控制台显示的可能是 /invoke/函数名，请根据实际日志调整
-        const url = `${LOCAL_BASE_URL}/${name}/invoke`
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          // 将参数序列化为 JSON 字符串，模拟 event.body
-          body: JSON.stringify(params),
-        })
-
-        if (!response.ok) {
-          throw new Error(`Local function error: ${response.status} ${response.statusText}`)
+        // 如果 body 是字符串，尝试解析
+        if (typeof result.body === 'string') {
+          const parsedBody = JSON.parse(result.body)
+          console.log(`📥 [Local Debug Object] Result Parsed:`, parsedBody)
+          return parsedBody
         }
-
-        const result = await response.json()
-        console.log(`📥 [Local Debug] Result:`, result)
-
-        // 本地调试直接返回 fetch 的 json 结果
-        return result
+        // 如果 body 已经是对象（虽然通常是字符串），直接返回
+        return result.body
       } catch (e) {
-        console.error(`❌ [Local Debug] Error:`, e)
-        throw e
+        console.warn('Failed to parse local debug body:', e)
+        // 解析失败则原样返回，由业务层处理
+        return result.body
       }
     }
+    return result
+  }
 
-    // -------------------------------------------------
-    // 分支 B: 云端 SDK 模式 (Production / Cloud)
-    // -------------------------------------------------
+  /**
+   * 私有方法：云端 SDK 调用
+   */
+  async _callCloud(name, params) {
     this.init()
     try {
       let functionName = name
@@ -115,7 +142,6 @@ class CloudService {
       console.log(`☁️ [Cloud] Calling function: ${functionName}`, params)
 
       const functionCallable = agconnect.function().wrap(functionName)
-
       // 设置超时时间 (单位毫秒)
       functionCallable.timeout = 30 * 1000
 
@@ -131,19 +157,37 @@ class CloudService {
   }
 
   /**
+   * 调用云对象 (Cloud Object RPC)
+   * @param {string} objectName 云对象名称 (如 'chat-service')
+   * @param {string} methodName 方法名称 (如 'generateRecipe')
+   * @param {Array} args 参数列表
+   */
+  async callObject(objectName, methodName, args = []) {
+    console.log(`☁️ [CloudObject] Calling ${objectName}.${methodName}`, args)
+
+    const payload = {
+      method: methodName,
+      params: args,
+    }
+
+    // 本地调试模式下，Wrapper 期望参数包裹在 body 字段中
+    if (USE_LOCAL_DEBUG) {
+      return this.callFunction(objectName, { body: payload })
+    }
+
+    return this.callFunction(objectName, payload)
+  }
+
+  /**
    * 业务方法：手机号登录
    */
   async loginByPhone(phone, pwd) {
     try {
-      // 调用 user-login 云函数
-      // 注意：这里调用的名称必须与你创建的云函数名称一致
       const res = await this.callFunction('user-login', {
-        // 这里的参数结构会对应 handler.ts 中的 event.body
         phone: phone,
         password: pwd,
-        // 如果你的 handler 需要 operation/action 字段，可以在这里补充
-        action: 'get', // 对应 handler 中的 action === 'get'
-        userId: phone, // 对应 handler 中的 userId
+        action: 'get',
+        userId: phone,
       })
 
       // 数据解析与容错处理
@@ -156,7 +200,7 @@ class CloudService {
         }
       }
 
-      // 检查业务状态码 (假设 handler 返回结构为 { ret: { code: 0 }, result: ... })
+      // 检查业务状态码
       if (data && data.ret && data.ret.code === 0) {
         return data.result
       }

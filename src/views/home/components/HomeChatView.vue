@@ -181,6 +181,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isLoadingHistory: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['send', 'back', 'start-cooking'])
