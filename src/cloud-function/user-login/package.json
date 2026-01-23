@@ -1,7 +1,0 @@
-{
-  "name": "user-login",
-  "version": "1.0.0",
-  "dependencies": {
-    "@hw-agconnect/cloud-server": "^1.0.1"
-  }
-}

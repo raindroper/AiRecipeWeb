@@ -70,9 +70,7 @@
         @click="router.push('/profile')"
       >
         <div class="flex items-center gap-3">
-          <div
-            class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-xl"
-          >
+          <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-xl">
             🧊
           </div>
           <div class="text-sm text-gray-700">
@@ -91,36 +89,101 @@
     <!-- Recent Creations Module -->
     <div>
       <h3 class="text-sm font-bold text-gray-500 mb-3 px-1">🕒 最近生成</h3>
-      <div class="space-y-3">
+
+      <!-- No Data State -->
+      <div
+        v-if="!isLoggedIn || recentRecipes.length === 0"
+        class="text-center py-8 bg-white rounded-2xl border border-gray-100 shadow-sm"
+      >
+        <div class="text-gray-300 text-4xl mb-2">🍽️</div>
+        <div class="text-gray-400 text-sm">
+          {{ !isLoggedIn ? '登录查看生成记录' : '暂无生成记录' }}
+        </div>
+      </div>
+
+      <!-- List -->
+      <div v-else class="space-y-3">
         <div
-          v-for="i in 3"
-          :key="i"
-          class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex gap-3 active:scale-[0.99] transition-transform"
+          v-for="(recipe, index) in recentRecipes"
+          :key="recipe.id || index"
+          class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex gap-3 active:scale-[0.99] transition-transform cursor-pointer"
+          @click="$emit('start-cooking', recipe)"
         >
           <div class="w-16 h-16 rounded-xl bg-gray-100 shrink-0 overflow-hidden relative">
-            <!-- Placeholder Image -->
+            <!-- Placeholder Image or Real Image if available -->
+            <img
+              v-if="recipe.coverUrl"
+              :src="recipe.coverUrl"
+              class="w-full h-full object-cover"
+              alt="Food"
+            />
             <div
+              v-else
               class="absolute inset-0 flex items-center justify-center text-gray-300 bg-gray-100"
             >
               🍽️
             </div>
           </div>
           <div class="flex flex-col justify-center flex-1 min-w-0">
-            <div class="font-bold text-gray-800 text-sm truncate">番茄滑蛋牛肉 {{ i }}</div>
-            <div class="text-xs text-gray-400 mt-1">高蛋白 · 15分钟 · 家常菜</div>
+            <div class="font-bold text-gray-800 text-sm truncate">
+              <!-- [Refactor]: Use nullish coalescing -->
+              {{ recipe.name ?? recipe.title ?? '未知菜谱' }}
+            </div>
+            <div class="text-xs text-gray-400 mt-1 truncate">
+              {{
+                [
+                  ...(recipe.tags || []).slice(0, 1),
+                  recipe.time ? `${recipe.time}` : '',
+                  recipe.difficulty,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+              }}
+            </div>
           </div>
-          <div class="flex items-center px-2">
+          <div class="flex items-center px-2 flex-col gap-2">
+            <!-- Favorite Button -->
+            <var-button
+              round
+              icon-container
+              :color="recipe.isCollected ? '#fef2f2' : '#f5f5f5'"
+              :text-color="recipe.isCollected ? '#ef4444' : '#9ca3af'"
+              class="!w-8 !h-8 transition-colors duration-300"
+              @click.stop="handleCollectClick(recipe)"
+            >
+              <var-icon
+                :name="recipe.isCollected ? 'heart' : 'heart-outline'"
+                :size="16"
+                class="transition-transform active:scale-125"
+              />
+            </var-button>
+
+            <!-- Cook Button -->
             <var-button
               round
               icon-container
               color="#fff7ed"
               text-color="#f97316"
               class="!w-8 !h-8"
+              @click.stop="$emit('start-cooking', recipe)"
             >
-              <var-icon name="plus" size="16" />
+              <var-icon name="chef-hat" size="16" />
             </var-button>
           </div>
         </div>
+      </div>
+
+      <!-- View More Button -->
+      <div v-if="hasMore" class="flex justify-center pt-2">
+         <var-button 
+            text 
+            type="warning" 
+            size="small" 
+            @click="$emit('switch-to-chat')"
+            class="text-gray-500 hover:text-orange-500"
+         >
+            查看更多记录 <var-icon name="chevron-right" size="14" />
+         </var-button>
       </div>
     </div>
   </div>
@@ -141,9 +204,27 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  recentRecipes: {
+    type: Array,
+    default: () => [],
+  },
+  isLoggedIn: {
+    type: Boolean,
+    default: false,
+  },
+  hasMore: {
+    type: Boolean,
+    default: false,
+  }
 })
 
-const emit = defineEmits(['update:modelValue', 'generate', 'switch-to-chat'])
+const emit = defineEmits([
+  'update:modelValue',
+  'generate',
+  'switch-to-chat',
+  'start-cooking',
+  'toggle-collect',
+])
 
 const sceneTags = [
   { icon: '🔥', label: '减脂餐' },
@@ -166,4 +247,18 @@ const handleGenerate = () => {
   }
   emit('generate', props.modelValue)
 }
+
+const handleCollectClick = (recipe) => {
+  console.log('HomeInputView: toggle-collect clicked', recipe)
+  emit('toggle-collect', recipe)
+}
 </script>
+
+<style scoped>
+@import "tailwindcss";
+
+/* [Refactor]: Extract repeating utility classes using @apply for cleaner template */
+.recipe-card {
+  @apply bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex gap-3 active:scale-[0.99] transition-transform cursor-pointer;
+}
+</style>

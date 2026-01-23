@@ -51,7 +51,8 @@
             <div v-if="msg.recipeData" class="p-4 pt-2">
               <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-50">
                 <span class="text-xl">🍲</span>
-                <h2 class="font-bold text-gray-800 text-lg">{{ msg.recipeData.title }}</h2>
+                <!-- [Refactor]: Use nullish coalescing -->
+                <h2 class="font-bold text-gray-800 text-lg">{{ msg.recipeData.title ?? '未知菜谱' }}</h2>
               </div>
 
               <!-- Tags -->
@@ -60,12 +61,14 @@
                   class="flex items-center gap-1 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-lg"
                 >
                   <var-icon name="clock-outline" size="12" />
-                  {{ msg.recipeData.time || '15分钟' }}
+                  <!-- [Refactor]: Use nullish coalescing -->
+                  {{ msg.recipeData.time ?? '15分钟' }}
                 </div>
                 <div
                   class="flex items-center gap-1 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-lg"
                 >
-                  🔥 {{ msg.recipeData.calories || '300' }} kcal
+                  <!-- [Refactor]: Use nullish coalescing -->
+                  🔥 {{ msg.recipeData.calories ?? '300' }} kcal
                 </div>
                 <div
                   v-for="tag in msg.recipeData.tags"
@@ -80,7 +83,8 @@
               <div class="bg-gray-50 rounded-xl p-3 mb-3">
                 <div class="text-xs font-bold text-gray-500 mb-2">所需食材</div>
                 <div class="text-sm text-gray-700 leading-relaxed">
-                  {{ msg.recipeData.ingredients.map((i) => i.name).join('、') }}
+                  <!-- [Refactor]: Optional chaining for safety -->
+                  {{ msg.recipeData.ingredients?.map((i) => i.name).join('、') }}
                 </div>
               </div>
 
@@ -88,6 +92,7 @@
               <div class="bg-gray-50 rounded-xl p-3 mb-3">
                 <div class="text-xs font-bold text-gray-500 mb-2">简要步骤</div>
                 <div class="space-y-2">
+                  <!-- [Refactor]: Optional chaining for safety -->
                   <div
                     v-for="(step, idx) in msg.recipeData.steps"
                     :key="idx"
@@ -108,9 +113,23 @@
                   block
                   color="#f97316"
                   size="small"
+                  class="flex-1"
                   @click="$emit('start-cooking', msg.recipeData)"
                 >
                   开始烹饪
+                </var-button>
+                <var-button
+                  type="primary"
+                  :color="msg.recipeData.isCollected ? '#fef2f2' : '#f5f5f5'"
+                  :text-color="msg.recipeData.isCollected ? '#ef4444' : '#9ca3af'"
+                  size="small"
+                  class="w-12 shrink-0 transition-colors duration-300"
+                  @click="$emit('toggle-collect', msg.recipeData)"
+                >
+                  <var-icon
+                    :name="msg.recipeData.isCollected ? 'heart' : 'heart-outline'"
+                    class="transition-transform active:scale-125"
+                  />
                 </var-button>
               </div>
             </div>
@@ -187,7 +206,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['send', 'back', 'start-cooking'])
+const emit = defineEmits(['send', 'back', 'start-cooking', 'toggle-collect'])
 
 const chatInput = ref('')
 const chatContainerRef = ref(null)

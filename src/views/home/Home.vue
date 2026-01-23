@@ -18,8 +18,13 @@
           v-if="!showResult"
           v-model="userInput"
           :is-generating="isGenerating"
+          :recent-recipes="recentRecipes"
+          :has-more="hasMoreHistory"
+          :is-logged-in="!!userStore.currentUser"
           @generate="handleGenerate"
           @switch-to-chat="showResult = true"
+          @start-cooking="handleStartCooking"
+          @toggle-collect="handleToggleCollect"
         />
 
         <!-- View B: Result/Chat Mode -->
@@ -31,6 +36,7 @@
           @send="handleChatSend"
           @back="showResult = false"
           @start-cooking="handleStartCooking"
+          @toggle-collect="handleToggleCollect"
         />
       </Transition>
     </div>
@@ -38,11 +44,13 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useRecipeStore } from '@/stores/recipe'
-import { cloudService } from '@/utils/cloud'
+// import { cloudService } from '@/utils/cloud' // No longer needed directly here
+import { ChatService } from '@/services/ChatService'
+import { RecipeService } from '@/services/RecipeService'
 import { Snackbar } from '@varlet/ui'
 
 // Components
@@ -61,6 +69,8 @@ const isLoadingHistory = ref(false)
 const showResult = ref(false)
 const chatMessages = ref([])
 const historyLoaded = ref(false)
+const recentRecipes = ref([])
+const cachedHistoryList = ref([]) // Cache for raw history data
 
 // Logic
 const formatTime = (timestamp) => {
@@ -72,95 +82,136 @@ const formatTime = (timestamp) => {
   )}:${pad(date.getMinutes())}`
 }
 
-const loadChatHistory = async () => {
-  if (historyLoaded.value || !userStore.currentUser) return
+const fetchHistoryData = async () => {
+  if (!userStore.currentUser) {
+    recentRecipes.value = []
+    cachedHistoryList.value = []
+    return
+  }
 
-  isLoadingHistory.value = true
   try {
-    // 使用云对象获取历史记录
-    const res = await cloudService.callObject('chat-service', 'getRecipeList', [
-      userStore.currentUser.id,
-    ])
+    const historyList = await RecipeService.getRecipeList(userStore.currentUser.id)
+    cachedHistoryList.value = historyList // Store raw data
 
-    let historyList = []
-    if (Array.isArray(res)) {
-      historyList = res
-    } else if (res && res.data && Array.isArray(res.data)) {
-      historyList = res.data
-    } else if (typeof res === 'string') {
-      try {
-        const parsed = JSON.parse(res)
-        historyList = Array.isArray(parsed) ? parsed : []
-      } catch {
-        historyList = []
+    // 1. Update Recent Recipes
+    // Sort by time desc
+    const sortedData = [...historyList].sort((a, b) => {
+      const t1 = new Date(a.createdAt || a.timestamp).getTime()
+      const t2 = new Date(b.createdAt || b.timestamp).getTime()
+      return t2 - t1 // Descending
+    })
+
+    const recipes = []
+    for (const item of sortedData) {
+      if (item.aiResponse) {
+        try {
+          let aiData = JSON.parse(item.aiResponse)
+          const result = aiData.result || aiData
+          if (result && result.recipeData) {
+            recipes.push({
+              ...result.recipeData,
+              id: item._id || item.id, // Ensure ID exists if needed
+              recipeId: result.recipeData.recipeId || item.recipeId || item.id, // Ensure recipeId exists
+              isCollected: !!(item.isCollected || result.recipeData.isCollected),
+            })
+          }
+        } catch (e) {
+          // ignore parse error
+        }
       }
+      if (recipes.length >= 10) break
     }
-
-    if (historyList.length > 0) {
-      // 后端返回的数据通常按时间倒序或正序，文档未明确，假设可能乱序，先排序
-      const sortedData = historyList.sort((a, b) => {
-        const t1 = new Date(a.createdAt || a.timestamp).getTime()
-        const t2 = new Date(b.createdAt || b.timestamp).getTime()
-        return t1 - t2
-      })
-
-      const serverMessages = []
-      sortedData.forEach((item) => {
-        // 1. 用户提问
-        if (item.userQuery) {
-          serverMessages.push({
-            role: 'user',
-            text: item.userQuery,
-            timestamp: formatTime(item.createdAt),
-            isLocal: false,
-          })
-        }
-
-        // 2. AI 回复 (需解析 JSON 字符串)
-        if (item.aiResponse) {
-          let aiData = null
-          try {
-            aiData = JSON.parse(item.aiResponse)
-          } catch (e) {
-            // 如果不是 JSON，直接作为文本
-            aiData = { text: item.aiResponse }
-          }
-
-          const aiMsg = {
-            role: 'ai',
-            text: '',
-            recipeData: null,
-            timestamp: formatTime(item.createdAt),
-            isLocal: false,
-          }
-
-          // 处理解析后的 AI 数据结构
-          if (aiData) {
-            // 兼容直接返回结果或包含 result 包装的情况
-            const result = aiData.result || aiData
-
-            if (result.recipeData) {
-              aiMsg.recipeData = result.recipeData
-              aiMsg.text = result.text || '为你推荐这道菜：'
-            } else if (result.text) {
-              aiMsg.text = result.text
-            } else {
-              aiMsg.text = typeof result === 'string' ? result : JSON.stringify(result, null, 2)
-            }
-          }
-          serverMessages.push(aiMsg)
-        }
-      })
-
-      // Merge with existing local messages (preserve local ones at end if any)
-      const localMessages = chatMessages.value.filter((msg) => msg.isLocal)
-      chatMessages.value = [...serverMessages, ...localMessages]
-    }
-    historyLoaded.value = true
+    recentRecipes.value = recipes
+    historyLoaded.value = true // Mark as loaded
   } catch (e) {
-    console.error('Failed to load chat history:', e)
-  } finally {
+    console.error('Failed to fetch history data:', e)
+  }
+}
+
+onMounted(() => {
+  fetchHistoryData()
+})
+
+watch(
+  () => userStore.currentUser,
+  () => {
+    fetchHistoryData()
+  },
+)
+
+const loadChatHistory = async () => {
+  if (!userStore.currentUser) return
+
+  // Use cached data if available, otherwise fetch
+  if (!historyLoaded.value) {
+    isLoadingHistory.value = true
+    await fetchHistoryData()
     isLoadingHistory.value = false
+  }
+
+  // Process cached data for Chat View
+  const historyList = cachedHistoryList.value
+
+  if (historyList.length > 0) {
+    // Sort logic same as before
+    const sortedData = [...historyList].sort((a, b) => {
+      const t1 = new Date(a.createdAt || a.timestamp).getTime()
+      const t2 = new Date(b.createdAt || b.timestamp).getTime()
+      return t1 - t2 // Ascending for chat
+    })
+
+    const serverMessages = []
+    sortedData.forEach((item) => {
+      // 1. User Query
+      if (item.userQuery) {
+        serverMessages.push({
+          role: 'user',
+          text: item.userQuery,
+          timestamp: formatTime(item.createdAt),
+          isLocal: false,
+        })
+      }
+
+      // 2. AI Response
+      if (item.aiResponse) {
+        let aiData = null
+        try {
+          aiData = JSON.parse(item.aiResponse)
+        } catch (e) {
+          aiData = { text: item.aiResponse }
+        }
+
+        const aiMsg = {
+          role: 'ai',
+          text: '',
+          recipeData: null,
+          timestamp: formatTime(item.createdAt),
+          isLocal: false,
+        }
+
+        if (aiData) {
+          // [Refactor]: Use nullish coalescing
+          const result = aiData.result ?? aiData
+
+          if (result.recipeData) {
+            aiMsg.recipeData = result.recipeData
+            aiMsg.text = result.text || '为你推荐这道菜：'
+            // [Refactor]: Ensure isCollected is correctly synced using nullish coalescing
+            aiMsg.recipeData.isCollected = !!(item.isCollected ?? result.recipeData.isCollected)
+            aiMsg.recipeData.recipeId = result.recipeData.recipeId ?? item.recipeId ?? item.id
+          } else if (result.text) {
+            aiMsg.text = result.text
+          } else {
+            aiMsg.text = typeof result === 'string' ? result : JSON.stringify(result, null, 2)
+          }
+        }
+        serverMessages.push(aiMsg)
+      }
+    })
+
+    // Merge with existing local messages
+    const localMessages = chatMessages.value.filter((msg) => msg.isLocal)
+    chatMessages.value = [...serverMessages, ...localMessages]
   }
 }
 
@@ -205,39 +256,22 @@ const sendMessage = async (text) => {
     return
   }
 
+  if (!userStore.currentUser) {
+    Snackbar.warning('用户信息加载中，请稍后再试')
+    return
+  }
+
   chatMessages.value.push({
     role: 'user',
     text: text,
     timestamp: formatTime(Date.now()),
+    isLocal: true,
   })
   isGenerating.value = true
 
   try {
-    // 使用云对象生成菜谱
-    const res = await cloudService.callObject('chat-service', 'generateRecipe', [
-      userStore.currentUser?.id,
-      text,
-    ])
-
-    let data
-    if (typeof res === 'string') {
-      try {
-        data = JSON.parse(res)
-      } catch {
-        // 如果解析失败，可能返回的是纯文本错误或其他
-        throw new Error(res)
-      }
-    } else {
-      data = res
-    }
-
-    // 检查业务状态码
-    if (data && data.ret && data.ret.code !== 0) {
-      throw new Error(data.ret.desc || '生成失败')
-    }
-
-    // 获取实际结果数据
-    const result = data.result || data
+    // 使用 Service 生成菜谱
+    const result = await ChatService.generateRecipe(userStore.currentUser?.id, text)
 
     const aiMsg = {
       role: 'ai',
@@ -280,9 +314,59 @@ const handleGenerate = (text) => {
 const handleChatSend = (text) => {
   sendMessage(text)
 }
+
+const handleToggleCollect = async (recipe) => {
+  console.log('handleToggleCollect')
+  console.log('handleToggleCollect called with:', recipe)
+  if (!userStore.currentUser) {
+    console.warn('User not logged in')
+    Snackbar.warning('请先登录')
+    return
+  }
+
+  if (!recipe || !recipe.recipeId) {
+    console.error('Invalid recipe object:', recipe)
+    Snackbar.warning('无法操作：缺少菜谱ID')
+    return
+  }
+
+  try {
+    if (recipe.isCollected) {
+      await RecipeService.uncollectRecipe(userStore.currentUser.id, recipe.recipeId)
+      recipe.isCollected = false
+      recipe.collectId = null
+      Snackbar.success('已取消收藏')
+    } else {
+      const res = await RecipeService.collectRecipe(userStore.currentUser.id, recipe.recipeId)
+      recipe.isCollected = true
+      recipe.collectId = res.id
+      Snackbar.success('已收藏')
+    }
+  } catch (e) {
+    console.error('Toggle collect failed:', e)
+    Snackbar.error(e.message || '操作失败')
+  }
+}
 </script>
 
 <style scoped>
+@import "tailwindcss";
+
+/* [Refactor]: Extract repeating utility classes to component-scoped CSS */
+.recipe-card {
+  @apply bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex gap-3 active:scale-[0.99] transition-transform cursor-pointer;
+}
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
 /* Transitions */
 .fade-enter-active,
 .fade-leave-active {

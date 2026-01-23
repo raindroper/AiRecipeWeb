@@ -544,6 +544,17 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import "tailwindcss";
+
+/* [Refactor]: Extract repeating login view styles */
+.login-container {
+  @apply flex flex-col justify-center items-center h-[90vh] px-8;
+}
+
+.logo-circle {
+  @apply w-24 h-24 rounded-full bg-gradient-to-tr from-orange-400 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-200 mb-6;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
